@@ -1,35 +1,36 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/Tanmoy095/Toll-Calculator.git/types"
+	"github.com/gorilla/websocket"
 )
+
+const wsEndpoint = "ws://127.0.0.1:3000/ws"
 
 var sendInterval = time.Second
 
-type ObuData struct {
-
-	//we will send websocket as json
-	OBUID int `json:"obuID"`
-	//lotitude
-	Lat float64 `json:"lat"`
-	//longitude
-	Long float64 `json:"long"`
-}
-
 func main() {
 	obuID := generateOBUIDS(20)
+	conn, _, err := websocket.DefaultDialer.Dial(wsEndpoint, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for {
 		for i := 0; i < len(obuID); i++ {
 			lat, long := genLatLong()
-			data := ObuData{
+			data := types.ObuData{
 				OBUID: obuID[i],
 				Lat:   lat,
 				Long:  long,
 			}
-			fmt.Printf("%+v\n", data)
+			if err := conn.WriteJSON(data); err != nil {
+				log.Fatal(err)
+			}
 
 		}
 		time.Sleep(sendInterval)
