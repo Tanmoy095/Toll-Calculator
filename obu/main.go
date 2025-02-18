@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math"
 	"math/rand"
 	"time"
 
@@ -10,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const wsEndpoint = "ws://127.0.0.1:3000/ws"
+const wsEndpoint = "ws://127.0.0.1:30000/ws"
 
 var sendInterval = time.Second
 
@@ -28,15 +27,30 @@ func main() {
 				Lat:   lat,
 				Long:  long,
 			}
-			if err := conn.WriteJSON(data); err != nil {
-				log.Fatal(err)
+			if err := sendData(conn, data); err != nil {
+				log.Println("Trying to reconnect...")
+				conn, _, err = websocket.DefaultDialer.Dial(wsEndpoint, nil)
+				if err != nil {
+					log.Println("Reconnection failed:", err)
+					time.Sleep(2 * time.Second) // Wait before retrying
+					continue
+				}
 			}
-
 		}
 		time.Sleep(sendInterval)
-
 	}
+
 }
+func sendData(conn *websocket.Conn, data types.ObuData) error {
+	err := conn.WriteJSON(data)
+	if err != nil {
+		log.Println("WebSocket error:", err)
+		conn.Close()
+		return err
+	}
+	return nil
+}
+
 func genCoord() float64 {
 	n := float64(rand.Intn(100) + 1)
 	f := rand.Float64()
@@ -48,7 +62,7 @@ func genLatLong() (float64, float64) {
 func generateOBUIDS(n int) []int {
 	ids := make([]int, n)
 	for i := 0; i < n; i++ {
-		ids[i] = rand.Intn(math.MaxInt)
+		ids[i] = rand.Intn(100000) // Generate smaller OBUIDs
 	}
 	return ids
 }
