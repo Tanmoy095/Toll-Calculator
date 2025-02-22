@@ -16,16 +16,16 @@ func NewLogMiddleware(next Dataproducer) *LogMiddleware {
 		next: next,
 	}
 }
-func (l *LogMiddleware) ProduceData(data types.ObuData) error {
+
+func (l *LogMiddleware) ProduceData(data types.OBUData) error {
 	defer func(start time.Time) {
 		logrus.WithFields(logrus.Fields{
 			"obuID": data.OBUID,
-			"lat":   data.Lat,
-			"long":  data.Long,
+			"lat":   data.Latitude,
+			"long":  data.Longitude,
 			"took":  time.Since(start),
-		}).Info("ProduceData to kafka server")
-
+		}).Info("ProduceData to Kafka server")
 	}(time.Now())
 
-	return nil
+	return l.next.ProduceData(data)
 }

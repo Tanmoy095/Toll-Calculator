@@ -1,11 +1,7 @@
 package types
 
-type ObuData struct {
-
-	//we will send websocket as json
-	OBUID int `json:"obuID"`
-	//latitude
-	Lat float64 `json:"lat"`
-	//longitude
-	Long float64 `json:"long"`
+type OBUData struct {
+	OBUID     int     `json:"obu_id"` // Use json tags for proper JSON marshaling
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
