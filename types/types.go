@@ -7,7 +7,7 @@ type OBUData struct {
 }
 
 type Distance struct {
-	value float64 `json:"value"`
+	Value float64 `json:"value"`
 	OBUID int     `json:"obuID"`
 	Unix  int64   `json:"unix"` //time.Unix
 }

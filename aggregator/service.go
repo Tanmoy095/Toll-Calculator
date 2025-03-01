@@ -7,7 +7,7 @@ import (
 )
 
 type Aggregator interface {
-	AggregateDistance(types.Distance) (float64, error)
+	AggregateDistance(types.Distance) error
 }
 type storer interface {
 	Insert(types.Distance) error
@@ -17,18 +17,18 @@ type InvoiceAggregator struct {
 	store storer
 }
 
-func NewInvoiceAggregator(store storer) *InvoiceAggregator {
+func NewInvoiceAggregator(store storer) Aggregator {
 	return &InvoiceAggregator{
 		store: store,
 	}
 }
 
-func (i *InvoiceAggregator) AggregateDistance(distance types.Distance) (float64, error) {
+func (i *InvoiceAggregator) AggregateDistance(distance types.Distance) error {
 	fmt.Println("Processing and inserting distance in the storage", distance)
 	err := i.store.Insert(distance)
 	if err != nil {
-		return 0, err
+		panic(err)
 
 	}
-	return 0.0, nil
+	return nil
 }
