@@ -1,51 +1,46 @@
 package main
 
-
-
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"log"
-	"net"
 	"net/http"
-	"os"
 
-	"github.com/fulltimegodev/tolling/types"
-	"github.com/joho/godotenv"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
+	"github.com/Tanmoy095/Toll-Calculator.git/types"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-	var (
-		store          = makeStore()
-		svc            = NewInvoiceAggregator(store)
-		grpcListenAddr = os.Getenv("AGG_GRPC_ENDPOINT")
-		httpListenAddr = os.Getenv("AGG_HTTP_ENDPOINT")
-	)
-	svc = NewMetricsMiddleware(svc)
-	svc = NewLogMiddleware(svc)
-	
+	listenAddr := flag.String("listenaddr", ":3000", "the listen address of the HTTP server")
+	flag.Parse()
 
-
-func makeHTTPTransport(listenAddr string, svc Aggregator) error {
+	store := NewMemoryStore()
 	var (
-		aggMetricHandler = newHTTPMetricsHandler("aggregate")
-		invMetricHandler = newHTTPMetricsHandler("invoice")
-		
+		svc = NewInvoiceAggregator(store)
 	)
-	http.HandleFunc("/invoice", invoiceHandler)
-	http.HandleFunc("/aggregate", aggregateHandler)
-	
+
+	fmt.Println("this is working fine")
+	makeHttpTransport(*listenAddr, svc)
+
+}
+func makeHttpTransport(listenAddr string, svc Aggregator) {
+	fmt.Println("HTTP transport running on port ", listenAddr)
+	http.HandleFunc("/aggregate", handleAggregate(svc))
+	http.ListenAndServe(listenAddr, nil)
+
 }
 
+func handleAggregate(svc Aggregator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//read request
+		//call service
+		//write response
+		var distance types.Distance
+		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
 
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-func writeJSON(w http.ResponseWriter, status int, v any) error {
-	w.WriteHeader(status)
-	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(v)
+	}
+
 }
