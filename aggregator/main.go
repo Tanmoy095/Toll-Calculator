@@ -57,49 +57,22 @@ func handleGetInvoice(svc Aggregator) http.HandlerFunc {
 
 }
 
-// func handleAggregate(svc Aggregator) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		//read request
-// 		//call service
-// 		//write response
-// 		var distance types.Distance
-// 		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
-
-// 			writeJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-
-// 			return
-// 		}
-// 		if err := svc.AggregateDistance(distance); err != nil {
-// 			writeJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-// 			return
-// 		}
-
-// 	}
-
-// }
-
 func handleAggregate(svc Aggregator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Received request at /aggregate")
-
 		var distance types.Distance
 		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
-			fmt.Println("Error decoding JSON:", err)
+
 			writeJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+
 			return
 		}
-
-		fmt.Println("Received distance data:", distance)
-
 		if err := svc.AggregateDistance(distance); err != nil {
-			fmt.Println("Error in AggregateDistance:", err)
 			writeJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
 
-		fmt.Println("Successfully aggregated distance for OBU ID:", distance.OBUID)
-		w.WriteHeader(http.StatusOK)
 	}
+
 }
 
 func writeJson(w http.ResponseWriter, status int, v any) error {
