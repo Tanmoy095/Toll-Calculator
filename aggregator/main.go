@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Tanmoy095/Toll-Calculator.git/types"
 )
@@ -26,29 +27,79 @@ func main() {
 func makeHttpTransport(listenAddr string, svc Aggregator) {
 	fmt.Println("HTTP transport running on port ", listenAddr)
 	http.HandleFunc("/aggregate", handleAggregate(svc))
+	http.HandleFunc("/invoice", handleGetInvoice(svc))
 	http.ListenAndServe(listenAddr, nil)
 
 }
 
-func handleAggregate(svc Aggregator) http.HandlerFunc {
+func handleGetInvoice(svc Aggregator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//read request
-		//call service
-		//write response
-		var distance types.Distance
-		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
+		values, ok := r.URL.Query()["obu"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Missing 'obu' parameter"))
+			return
 
-			writeJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-
+		}
+		obuID, err := strconv.Atoi(values[0])
+		if err != nil {
+			writeJson(w, http.StatusBadRequest, map[string]string{"error": "invalid OBU ID"})
 			return
 		}
-		if err := svc.AggregateDistance(distance); err != nil {
+		invoice, err := svc.Calculate_Invoice(obuID)
+		if err != nil {
 			writeJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
 
+		writeJson(w, http.StatusOK, invoice)
 	}
 
+}
+
+// func handleAggregate(svc Aggregator) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		//read request
+// 		//call service
+// 		//write response
+// 		var distance types.Distance
+// 		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
+
+// 			writeJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+
+// 			return
+// 		}
+// 		if err := svc.AggregateDistance(distance); err != nil {
+// 			writeJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+// 			return
+// 		}
+
+// 	}
+
+// }
+
+func handleAggregate(svc Aggregator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received request at /aggregate")
+
+		var distance types.Distance
+		if err := json.NewDecoder(r.Body).Decode(&distance); err != nil {
+			fmt.Println("Error decoding JSON:", err)
+			writeJson(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		fmt.Println("Received distance data:", distance)
+
+		if err := svc.AggregateDistance(distance); err != nil {
+			fmt.Println("Error in AggregateDistance:", err)
+			writeJson(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		fmt.Println("Successfully aggregated distance for OBU ID:", distance.OBUID)
+		w.WriteHeader(http.StatusOK)
+	}
 }
 
 func writeJson(w http.ResponseWriter, status int, v any) error {

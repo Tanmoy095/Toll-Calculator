@@ -48,18 +48,17 @@ func (c *kafkaConsumer) readMessageLoop() {
 	for c.isRunning {
 		msg, err := c.consumer.ReadMessage(-1)
 		if err != nil {
-			logrus.Errorf("kafka consume error: %s", err)
+			logrus.Errorf("kafka consume error %s", err)
 			continue
 		}
 		var data types.OBUData
-		err = json.Unmarshal(msg.Value, &data)
-		if err != nil {
-			logrus.Errorf("unmarshaling error: %s", err)
+		if err := json.Unmarshal(msg.Value, &data); err != nil {
+			logrus.Errorf("JSON serialization error: %s", err)
 			continue
 		}
 		distance, err := c.calcService.CalculateDistance(data)
 		if err != nil {
-			logrus.Errorf("calculating distance error: %s", err)
+			logrus.Errorf("calculation error: %s", err)
 			continue
 		}
 		req := types.Distance{
@@ -68,10 +67,8 @@ func (c *kafkaConsumer) readMessageLoop() {
 			OBUID: data.OBUID,
 		}
 		if err := c.aggClient.AggregateInvoice(req); err != nil {
-			logrus.Errorf("aggregate invoice error: %s", err)
+			logrus.Errorf("aggregate error:", err)
 			continue
 		}
-
 	}
-
 }

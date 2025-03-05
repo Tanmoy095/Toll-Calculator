@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/Tanmoy095/Toll-Calculator.git/types"
@@ -12,22 +11,43 @@ type LoggingMiddleware struct {
 	next Aggregator
 }
 
-func NewLoggingMiddleware(next Aggregator) *LoggingMiddleware {
+func NewLoggingMiddleware(next Aggregator) Aggregator {
 	return &LoggingMiddleware{
 		next: next,
 	}
 }
 
 func (l *LoggingMiddleware) AggregateDistance(distance types.Distance) (err error) {
-	log.Printf("Processing and inserting distance in the storage: %v", distance)
 	defer func(start time.Time) {
-		logrus.WithFields(logrus.Fields{
 
-			"took":     time.Since(start),
-			"error":    err,
-			"distance": distance,
-		}).Info("Processing and inserting distance in the storage:")
+		logrus.WithFields(logrus.Fields{
+			"took":  time.Since(start),
+			"error": err,
+		}).Info("Aggregate distance")
 	}(time.Now())
 	err = l.next.AggregateDistance(distance)
+	return
+}
+
+func (l *LoggingMiddleware) Calculate_Invoice(obuID int) (invoice *types.Invoice, err error) {
+	defer func(start time.Time) {
+		var (
+			distance float64
+			amount   float64
+		)
+		if invoice != nil {
+			distance = invoice.TotalDistance
+			amount = invoice.TotalAmount
+		}
+		logrus.WithFields(logrus.Fields{
+			"took":     time.Since(start),
+			"err":      err,
+			"obuID":    obuID,
+			"amount":   amount,
+			"distance": distance,
+		}).Info("CalculateInvoice")
+	}(time.Now())
+
+	invoice, err = l.next.Calculate_Invoice(obuID)
 	return
 }
