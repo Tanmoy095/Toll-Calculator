@@ -1,0 +1,39 @@
+In client.go (Distance Calculator Service)
+Step-by-Step Breakdown
+Step 1: Convert Distance Data into JSON
+
+b, err := json.Marshal(distance) 
+Converts the types.Distance struct into a JSON format.
+Step 2: Create an HTTP Request
+
+req, err := http.NewRequest("POST", c.Endpoint+"/aggregate", bytes.NewReader(b))
+Creates a POST request to send the distance data to the Aggregator Service’s /aggregate endpoint.
+Step 3: Send the Request
+
+resp, err := http.DefaultClient.Do(req)
+Uses Go’s http.DefaultClient to send the HTTP request.
+Step 4: Check if Aggregator Service Responds Correctly
+
+if resp.StatusCode != http.StatusOK {
+    return fmt.Errorf("service responded with non-200 status: %d", resp.StatusCode)
+}
+If the response is not 200 OK, it returns an error
+📌 Full Flow (Diagram)
+
+1️⃣ Distance Calculator Service (Kafka Consumer)
+   → Reads GPS data from Kafka.
+   → Calculates distance.
+   → Calls client.AggregateInvoice(distance).
+
+2️⃣ Client Package (Distance Calculator Service)
+   → Converts distance to JSON.
+   → Sends HTTP POST to Aggregator Service (`/aggregate`).
+
+3️⃣ Aggregator Service (HTTP Server)
+   → Receives HTTP request on `/aggregate`.
+   → Decodes JSON data.
+   → Calls AggregateDistance(distance).
+
+4️⃣ Storage (Aggregator Service)
+   → Stores the distance in memory.
+   → Returns HTTP 200 OK.

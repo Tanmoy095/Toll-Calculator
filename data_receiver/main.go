@@ -1,103 +1,104 @@
+// main.go - Entry point for the WebSocket server
+
 package main
 
 import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/Tanmoy095/Toll-Calculator.git/types"
 	"github.com/gorilla/websocket"
 )
 
-var kafkaTopic = "obudata"
-
+// The main function initializes the WebSocket server and listens for connections.
 func main() {
+	// Create a new DataReceiver instance
 	recv, err := NewDataReceiver()
 	if err != nil {
-		log.Fatal("Error initializing data receiver:", err)
+		log.Fatal(err)
 	}
 
-	http.HandleFunc("/ws", recv.handleWs)
+	// Register WebSocket handler
+	http.HandleFunc("/ws", recv.handleWS)
 
-	fmt.Println("WebSocket server starting on port 30000...")
-	err = http.ListenAndServe(":30000", nil)
-	if err != nil {
-		log.Fatal("Server failed to start:", err)
-	}
+	// Start the HTTP server on port 30000
+	http.ListenAndServe(":30000", nil)
 }
 
+// DataReceiver is responsible for receiving WebSocket messages and producing them to Kafka.
 type DataReceiver struct {
-	msgchn chan types.OBUData
-	conn   *websocket.Conn
-	prod   Dataproducer
+	msgch chan types.OBUData // Channel to buffer incoming OBU data
+	conn  *websocket.Conn    // WebSocket connection instance
+	prod  DataProducer       // Producer interface for sending data to Kafka
 }
 
-// In NewDataReceiver() function
+// NewDataReceiver initializes a DataReceiver with a Kafka producer.
 func NewDataReceiver() (*DataReceiver, error) {
 	var (
-		p   Dataproducer
-		err error
+		p          DataProducer
+		err        error
+		kafkaTopic = "obudata" // Kafka topic to send data
 	)
 
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		p, err = NewKafkaProducer()
-		if err == nil {
-			break
-		}
-		log.Printf("Kafka connection attempt %d failed: %v\n", i+1, err)
-		time.Sleep(5 * time.Second)
-	}
-
+	// Create a new Kafka producer instance
+	p, err = NewKafkaProducer(kafkaTopic)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kafka after %d retries: %v", maxRetries, err)
+		return nil, err
 	}
 
+	// Wrap producer with logging middleware
 	p = NewLogMiddleware(p)
+
 	return &DataReceiver{
-		msgchn: make(chan types.OBUData, 128),
-		prod:   p,
+		msgch: make(chan types.OBUData, 128), // Buffered channel for message handling
+		prod:  p,                             // Assign producer
 	}, nil
 }
+
+// produceData sends the received OBUData to Kafka using the producer.
 func (dr *DataReceiver) produceData(data types.OBUData) error {
 	return dr.prod.ProduceData(data)
 }
 
-func (dr *DataReceiver) handleWs(w http.ResponseWriter, r *http.Request) {
+// handleWS upgrades an HTTP request to a WebSocket connection and starts listening for messages.
+func (dr *DataReceiver) handleWS(w http.ResponseWriter, r *http.Request) {
+	// Upgrade HTTP connection to WebSocket
 	u := websocket.Upgrader{
-		CheckOrigin:     func(r *http.Request) bool { return true },
 		ReadBufferSize:  1028,
 		WriteBufferSize: 1028,
 	}
+
+	// Upgrade to WebSocket connection
 	conn, err := u.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
-		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
-		return
+		log.Fatal(err)
 	}
-	dr.conn = conn
+	dr.conn = conn // Store connection in DataReceiver
+
+	// Start a goroutine to continuously read messages
 	go dr.wsReceiveLoop()
 }
 
+// wsReceiveLoop continuously listens for messages from WebSocket clients.
 func (dr *DataReceiver) wsReceiveLoop() {
 	fmt.Println("New OBU client connected!")
-	defer func() {
-		if dr.conn != nil {
-			dr.conn.Close()
-		}
-	}()
 
 	for {
 		var data types.OBUData
+
+		// Read and parse incoming JSON message
 		if err := dr.conn.ReadJSON(&data); err != nil {
-			log.Println("WebSocket read error:", err)
-			break // Exit the loop on error
+			log.Println("read error:", err)
+			continue
 		}
 
+		// Log received message
 		fmt.Println("Received message:", data)
+
+		// Send data to Kafka producer
 		if err := dr.produceData(data); err != nil {
-			log.Println("Kafka produce error:", err)
+			fmt.Println("Kafka produce error:", err)
 		}
 	}
 }

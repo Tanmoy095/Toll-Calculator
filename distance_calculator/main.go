@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/Tanmoy095/Toll-Calculator.git/aggregator/client"
+	"github.com/Tanmoy095/Toll-Calculator.git/distance_calculator/client"
 )
 
 const (
@@ -19,7 +19,10 @@ func main() {
 	svc = NewCalculatorService()
 	svc = NewLogMiddleware(svc)
 
-	kafkaConsumer, err := NewKafkaConsumer(kafkaTopic, svc, client.NewClient(aggregatorEndpoint))
+	// Creating a client to send data to Aggregator
+	aggregatorClient := client.NewClient(aggregatorEndpoint)
+
+	kafkaConsumer, err := NewKafkaConsumer(kafkaTopic, svc, aggregatorClient)
 
 	if err != nil {
 		log.Fatal(err)

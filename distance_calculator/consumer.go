@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Tanmoy095/Toll-Calculator.git/aggregator/client"
+	"github.com/Tanmoy095/Toll-Calculator.git/distance_calculator/client"
 	"github.com/Tanmoy095/Toll-Calculator.git/types"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/sirupsen/logrus"

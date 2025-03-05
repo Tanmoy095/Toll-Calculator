@@ -1,9 +1,9 @@
 package types
 
 type OBUData struct {
-	OBUID     int     `json:"obu_id"` // Use json tags for proper JSON marshaling
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	OBUID     int     `json:"obuID"`
+	Latitude  float64 `json:"lat"`
+	Longitude float64 `json:"long"`
 }
 
 type Distance struct {

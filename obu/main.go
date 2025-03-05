@@ -6,71 +6,42 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Tanmoy095/Toll-Calculator.git/types" // Import custom package for OBUData struct
 	"github.com/gorilla/websocket"
 )
 
-const wsEndpoint = "ws://localhost:30000/ws"
+const wsEndpoint = "ws://127.0.0.1:30000/ws" // WebSocket server endpoint
 
-var sendInterval = time.Second * 5
+var sendInterval = time.Second * 5 // Interval between sending data packets
 
-// Generate random coordinates
-func genCord() float64 {
-	n := float64(rand.Intn(100) + 1)
-	f := rand.Float64()
-	return n + f
+// genLatLong generates a random latitude and longitude pair
+func genLatLong() (float64, float64) {
+	return genCoord(), genCoord()
 }
 
-// Generate random latitude and longitude
-func Location() (float64, float64) {
-	return genCord(), genCord()
-}
-
-// Generate random OBU IDs
-func generateOBUID(n int) []int {
-	ids := make([]int, n)
-	for i := 0; i < n; i++ {
-		ids[i] = rand.Intn(999999)
-	}
-	return ids
+// genCoord generates a random coordinate value
+func genCoord() float64 {
+	n := float64(rand.Intn(100) + 1) // Random integer part (1-100)
+	f := rand.Float64()              // Random decimal part (0-1)
+	return n + f                     // Combine to get the final coordinate
 }
 
 func main() {
-	// Seed the random number generator
-	rand.Seed(time.Now().UnixNano())
+	obuIDS := generateOBUIDS(20) // Generate 20 random OBU IDs
 
-	// Generate OBU IDs
-	obuIDs := generateOBUID(20)
-
-	// Connect to the WebSocket server
-	var conn *websocket.Conn
-	var err error
-
-	// Retry connection logic
-	for i := 0; i < 5; i++ { // Retry 5 times
-		conn, _, err = websocket.DefaultDialer.Dial(wsEndpoint, nil)
-		if err == nil {
-			break
-		}
-		log.Printf("Connection attempt %d failed: %v\n", i+1, err)
-		time.Sleep(time.Second * 2) // Wait before retrying
-	}
+	// Establish a WebSocket connection
+	conn, _, err := websocket.DefaultDialer.Dial(wsEndpoint, nil)
 	if err != nil {
-		log.Fatalf("Failed to connect to WebSocket server after retries: %v", err)
+		log.Fatal(err) // Terminate if connection fails
 	}
-	defer conn.Close()
 
-	log.Println("Connected to WebSocket server")
-
-	// Continuously send data to the server
+	// Infinite loop to continuously send data to the server
 	for {
-		for i := 0; i < len(obuIDs); i++ {
-			lat, long := Location()
-			data := struct {
-				OBUID     int     `json:"obuID"`
-				Latitude  float64 `json:"latitude"`
-				Longitude float64 `json:"longitude"`
-			}{
-				OBUID:     obuIDs[i],
+		// Iterate over each OBU ID and send location data
+		for i := 0; i < len(obuIDS); i++ {
+			lat, long := genLatLong() // Generate random latitude and longitude
+			data := types.OBUData{
+				OBUID:     obuIDS[i],
 				Latitude:  lat,
 				Longitude: long,
 			}
@@ -80,11 +51,23 @@ func main() {
 
 			// Send the data as JSON over the WebSocket connection
 			if err := conn.WriteJSON(data); err != nil {
-				log.Fatalf("Failed to send data: %v", err)
+				log.Fatal(err) // Terminate program if sending fails
 			}
 		}
-
-		// Wait before sending the next batch of data
-		time.Sleep(sendInterval)
+		time.Sleep(sendInterval) // Wait before sending the next batch
 	}
+}
+
+// generateOBUIDS generates 'n' random OBU IDs
+func generateOBUIDS(n int) []int {
+	ids := make([]int, n)
+	for i := 0; i < n; i++ {
+		ids[i] = rand.Intn(999999) // Generate a random OBU ID (0-999999)
+	}
+	return ids
+}
+
+// init function initializes the random number generator seed
+func init() {
+	rand.Seed(time.Now().UnixNano()) // Ensure random values on each execution
 }
